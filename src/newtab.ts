@@ -4,6 +4,7 @@ type Theme = 'auto' | 'light' | 'dark'
 type SearchEngine = 'browser' | 'google' | 'duckduckgo'
 type Lang = 'en' | 'zh'
 type ClockFormat = '12' | '24'
+type SearchStyle = 'square' | 'rounded' | 'line'
 
 const STORAGE_KEYS = {
   theme: 'theme',
@@ -14,6 +15,7 @@ const STORAGE_KEYS = {
   showDots: 'showDots',
   lang: 'lang',
   clockFormat: 'clockFormat',
+  searchStyle: 'searchStyle',
 }
 
 const SEARCH_URLS: Record<Exclude<SearchEngine, 'browser'>, string> = {
@@ -43,6 +45,10 @@ const I18N: Record<Lang, Record<string, string>> = {
     clock24h: '24-hour',
     placeholder: 'Type to search...',
     go: 'Go',
+    searchStyle: 'Search Box Style',
+    square: 'Square',
+    rounded: 'Rounded',
+    line: 'Line',
   },
   zh: {
     searchTitle: '显示标题',
@@ -65,6 +71,10 @@ const I18N: Record<Lang, Record<string, string>> = {
     clock24h: '24小时制',
     placeholder: '输入搜索内容...',
     go: '前往',
+    searchStyle: '搜索框样式',
+    square: '方形',
+    rounded: '圆角矩形',
+    line: '横线',
   },
 }
 
@@ -122,6 +132,14 @@ function updateGo() {
   if (goBtn) goBtn.classList.toggle('hidden', !showGo)
 }
 
+function updateSearchStyle() {
+  const form = document.getElementById('search-form') as HTMLElement
+  const style = getStored(STORAGE_KEYS.searchStyle, ['square', 'rounded', 'line'], 'square')
+  if (!form) return
+  form.classList.remove('style-square', 'style-rounded', 'style-line')
+  form.classList.add(`style-${style}`)
+}
+
 function updateUI() {
   const input = document.getElementById('search-input') as HTMLInputElement
   const goBtn = document.querySelector('.search-go') as HTMLElement
@@ -174,6 +192,7 @@ function getMenuHTML(): string {
   const engine = getStored(STORAGE_KEYS.searchEngine, ['browser', 'google', 'duckduckgo'], 'browser')
   const lang = getStored(STORAGE_KEYS.lang, ['en', 'zh'], 'en')
   const clock = getStored(STORAGE_KEYS.clockFormat, ['12', '24'], '24')
+  const searchStyle = getStored(STORAGE_KEYS.searchStyle, ['square', 'rounded', 'line'], 'square')
 
   return `
     <button class="menu-item" data-action="toggle-title">
@@ -275,6 +294,32 @@ function getMenuHTML(): string {
     </div>
     <div class="menu-has-sub">
       <button class="menu-item menu-parent">
+        <span class="menu-label">${t('searchStyle')}</span>
+        <span class="menu-arrow">&#9656;</span>
+      </button>
+      <div class="menu-submenu">
+        <button class="menu-item" data-action="set-style" data-value="square">
+          <span class="menu-label">
+            <span class="menu-radio ${searchStyle === 'square' ? 'selected' : ''}"></span>
+            ${t('square')}
+          </span>
+        </button>
+        <button class="menu-item" data-action="set-style" data-value="rounded">
+          <span class="menu-label">
+            <span class="menu-radio ${searchStyle === 'rounded' ? 'selected' : ''}"></span>
+            ${t('rounded')}
+          </span>
+        </button>
+        <button class="menu-item" data-action="set-style" data-value="line">
+          <span class="menu-label">
+            <span class="menu-radio ${searchStyle === 'line' ? 'selected' : ''}"></span>
+            ${t('line')}
+          </span>
+        </button>
+      </div>
+    </div>
+    <div class="menu-has-sub">
+      <button class="menu-item menu-parent">
         <span class="menu-label">${t('language')}</span>
         <span class="menu-arrow">&#9656;</span>
       </button>
@@ -313,7 +358,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="prompt"><span>$</span> search</div>
         <div class="time" id="time"></div>
         <form class="search-form" id="search-form">
-          <div class="search-wrapper">
+          <div class="search-box">
             <input type="text" class="search-input" id="search-input" placeholder="Type to search..." autofocus>
             <button type="submit" class="search-go" title="Go">Go</button>
           </div>
@@ -323,6 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     updateDots()
     updateGo()
+    updateSearchStyle()
     updatePrompt()
     updateTime()
     updateUI()
@@ -404,6 +450,11 @@ document.addEventListener('DOMContentLoaded', () => {
           case 'set-clock':
             setStored(STORAGE_KEYS.clockFormat, value)
             updateTime()
+            refreshMenu()
+            break
+          case 'set-style':
+            setStored(STORAGE_KEYS.searchStyle, value)
+            updateSearchStyle()
             refreshMenu()
             break
           case 'set-lang':
