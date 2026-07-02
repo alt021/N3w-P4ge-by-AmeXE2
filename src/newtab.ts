@@ -3,14 +3,17 @@ import './newtab.css'
 type Theme = 'auto' | 'light' | 'dark'
 type SearchEngine = 'browser' | 'google' | 'duckduckgo'
 type Lang = 'en' | 'zh'
+type ClockFormat = '12' | '24'
 
 const STORAGE_KEYS = {
   theme: 'theme',
   showTitle: 'showTitle',
   showTime: 'showTime',
+  showGo: 'showGo',
   searchEngine: 'searchEngine',
   showDots: 'showDots',
   lang: 'lang',
+  clockFormat: 'clockFormat',
 }
 
 const SEARCH_URLS: Record<Exclude<SearchEngine, 'browser'>, string> = {
@@ -20,8 +23,9 @@ const SEARCH_URLS: Record<Exclude<SearchEngine, 'browser'>, string> = {
 
 const I18N: Record<Lang, Record<string, string>> = {
   en: {
-    searchTitle: '$ Search Title',
+    searchTitle: 'Search title',
     timeDisplay: 'Time Display',
+    showGo: 'Search button',
     dotBackground: 'Dot Background',
     theme: 'Theme',
     auto: 'Auto',
@@ -34,12 +38,16 @@ const I18N: Record<Lang, Record<string, string>> = {
     language: 'Language',
     english: 'English',
     chinese: '中文',
+    clockFormat: 'Clock Format',
+    clock12h: '12-hour',
+    clock24h: '24-hour',
     placeholder: 'Type to search...',
     go: 'Go',
   },
   zh: {
-    searchTitle: '$ 搜索标题',
+    searchTitle: '显示标题',
     timeDisplay: '时间显示',
+    showGo: '搜索按钮',
     dotBackground: '点阵背景',
     theme: '主题',
     auto: '自动',
@@ -52,6 +60,9 @@ const I18N: Record<Lang, Record<string, string>> = {
     language: '语言',
     english: 'English',
     chinese: '中文',
+    clockFormat: '时钟格式',
+    clock12h: '12小时制',
+    clock24h: '24小时制',
     placeholder: '输入搜索内容...',
     go: '前往',
   },
@@ -89,12 +100,26 @@ function updateTime() {
   el.classList.toggle('hidden', !showTime)
   if (!showTime) return
   const now = new Date()
-  el.textContent = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  const format = getStored(STORAGE_KEYS.clockFormat, ['12', '24'], '24')
+  if (format === '12') {
+    const h = now.getHours()
+    const ampm = h >= 12 ? 'PM' : 'AM'
+    const h12 = h % 12 || 12
+    el.textContent = `${String(h12).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} ${ampm}`
+  } else {
+    el.textContent = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  }
 }
 
 function updateDots() {
   const showDots = getStored(STORAGE_KEYS.showDots, ['true', 'false'], 'true') === 'true'
   document.body.classList.toggle('show-dots', showDots)
+}
+
+function updateGo() {
+  const goBtn = document.querySelector('.search-go') as HTMLElement
+  const showGo = getStored(STORAGE_KEYS.showGo, ['true', 'false'], 'true') === 'true'
+  if (goBtn) goBtn.classList.toggle('hidden', !showGo)
 }
 
 function updateUI() {
@@ -104,7 +129,34 @@ function updateUI() {
   if (goBtn) goBtn.textContent = t('go')
 }
 
+const IPV4_RE = /^(?:\d{1,3}\.){3}\d{1,3}$/
+const IPV6_RE = /^\[[\da-fA-F:]+\]$/
+const DOMAIN_RE = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i
+const PORT_RE = /:\d{1,5}$/
+
+function isURL(query: string): boolean {
+  if (/^https?:\/\//i.test(query)) return true
+  if (/^[a-z][a-z0-9+\-.]*:\/\//i.test(query)) return true
+  const withoutPort = PORT_RE.test(query) ? query.replace(PORT_RE, '') : query
+  if (IPV4_RE.test(withoutPort)) return true
+  if (IPV6_RE.test(withoutPort)) return true
+  if (DOMAIN_RE.test(withoutPort)) return true
+  return false
+}
+
+function openURL(url: string) {
+  if (/^[a-z][a-z0-9+\-.]*:\/\//i.test(url)) {
+    window.location.href = url
+  } else {
+    window.location.href = 'https://' + url
+  }
+}
+
 function search(query: string) {
+  if (isURL(query)) {
+    openURL(query)
+    return
+  }
   const engine = getStored(STORAGE_KEYS.searchEngine, ['browser', 'google', 'duckduckgo'], 'browser')
   if (engine === 'browser' && typeof chrome !== 'undefined' && chrome.search) {
     chrome.search.query({ text: query })
@@ -117,9 +169,11 @@ function getMenuHTML(): string {
   const showTitle = getStored(STORAGE_KEYS.showTitle, ['true', 'false'], 'true') === 'true'
   const showTime = getStored(STORAGE_KEYS.showTime, ['true', 'false'], 'false') === 'true'
   const showDots = getStored(STORAGE_KEYS.showDots, ['true', 'false'], 'true') === 'true'
+  const showGo = getStored(STORAGE_KEYS.showGo, ['true', 'false'], 'true') === 'true'
   const theme = getStored(STORAGE_KEYS.theme, ['auto', 'light', 'dark'], 'auto')
   const engine = getStored(STORAGE_KEYS.searchEngine, ['browser', 'google', 'duckduckgo'], 'browser')
   const lang = getStored(STORAGE_KEYS.lang, ['en', 'zh'], 'en')
+  const clock = getStored(STORAGE_KEYS.clockFormat, ['12', '24'], '24')
 
   return `
     <button class="menu-item" data-action="toggle-title">
@@ -140,60 +194,105 @@ function getMenuHTML(): string {
         ${t('dotBackground')}
       </span>
     </button>
-    <div class="menu-separator"></div>
-    <div class="menu-group-title">${t('theme')}</div>
-    <button class="menu-item" data-action="set-theme" data-value="auto">
+    <button class="menu-item" data-action="toggle-go">
       <span class="menu-label">
-        <span class="menu-radio ${theme === 'auto' ? 'selected' : ''}"></span>
-        ${t('auto')}
-      </span>
-    </button>
-    <button class="menu-item" data-action="set-theme" data-value="light">
-      <span class="menu-label">
-        <span class="menu-radio ${theme === 'light' ? 'selected' : ''}"></span>
-        ${t('light')}
-      </span>
-    </button>
-    <button class="menu-item" data-action="set-theme" data-value="dark">
-      <span class="menu-label">
-        <span class="menu-radio ${theme === 'dark' ? 'selected' : ''}"></span>
-        ${t('dark')}
+        <span class="menu-check ${showGo ? 'checked' : ''}">${showGo ? '&#10003;' : ''}</span>
+        ${t('showGo')}
       </span>
     </button>
     <div class="menu-separator"></div>
-    <div class="menu-group-title">${t('searchEngine')}</div>
-    <button class="menu-item" data-action="set-engine" data-value="browser">
-      <span class="menu-label">
-        <span class="menu-radio ${engine === 'browser' ? 'selected' : ''}"></span>
-        ${t('browserDefault')}
-      </span>
-    </button>
-    <button class="menu-item" data-action="set-engine" data-value="google">
-      <span class="menu-label">
-        <span class="menu-radio ${engine === 'google' ? 'selected' : ''}"></span>
-        ${t('google')}
-      </span>
-    </button>
-    <button class="menu-item" data-action="set-engine" data-value="duckduckgo">
-      <span class="menu-label">
-        <span class="menu-radio ${engine === 'duckduckgo' ? 'selected' : ''}"></span>
-        ${t('duckduckgo')}
-      </span>
-    </button>
-    <div class="menu-separator"></div>
-    <div class="menu-group-title">${t('language')}</div>
-    <button class="menu-item" data-action="set-lang" data-value="en">
-      <span class="menu-label">
-        <span class="menu-radio ${lang === 'en' ? 'selected' : ''}"></span>
-        ${t('english')}
-      </span>
-    </button>
-    <button class="menu-item" data-action="set-lang" data-value="zh">
-      <span class="menu-label">
-        <span class="menu-radio ${lang === 'zh' ? 'selected' : ''}"></span>
-        ${t('chinese')}
-      </span>
-    </button>
+    <div class="menu-has-sub">
+      <button class="menu-item menu-parent">
+        <span class="menu-label">${t('theme')}</span>
+        <span class="menu-arrow">&#9656;</span>
+      </button>
+      <div class="menu-submenu">
+        <button class="menu-item" data-action="set-theme" data-value="auto">
+          <span class="menu-label">
+            <span class="menu-radio ${theme === 'auto' ? 'selected' : ''}"></span>
+            ${t('auto')}
+          </span>
+        </button>
+        <button class="menu-item" data-action="set-theme" data-value="light">
+          <span class="menu-label">
+            <span class="menu-radio ${theme === 'light' ? 'selected' : ''}"></span>
+            ${t('light')}
+          </span>
+        </button>
+        <button class="menu-item" data-action="set-theme" data-value="dark">
+          <span class="menu-label">
+            <span class="menu-radio ${theme === 'dark' ? 'selected' : ''}"></span>
+            ${t('dark')}
+          </span>
+        </button>
+      </div>
+    </div>
+    <div class="menu-has-sub">
+      <button class="menu-item menu-parent">
+        <span class="menu-label">${t('searchEngine')}</span>
+        <span class="menu-arrow">&#9656;</span>
+      </button>
+      <div class="menu-submenu">
+        <button class="menu-item" data-action="set-engine" data-value="browser">
+          <span class="menu-label">
+            <span class="menu-radio ${engine === 'browser' ? 'selected' : ''}"></span>
+            ${t('browserDefault')}
+          </span>
+        </button>
+        <button class="menu-item" data-action="set-engine" data-value="google">
+          <span class="menu-label">
+            <span class="menu-radio ${engine === 'google' ? 'selected' : ''}"></span>
+            ${t('google')}
+          </span>
+        </button>
+        <button class="menu-item" data-action="set-engine" data-value="duckduckgo">
+          <span class="menu-label">
+            <span class="menu-radio ${engine === 'duckduckgo' ? 'selected' : ''}"></span>
+            ${t('duckduckgo')}
+          </span>
+        </button>
+      </div>
+    </div>
+    <div class="menu-has-sub">
+      <button class="menu-item menu-parent">
+        <span class="menu-label">${t('clockFormat')}</span>
+        <span class="menu-arrow">&#9656;</span>
+      </button>
+      <div class="menu-submenu">
+        <button class="menu-item" data-action="set-clock" data-value="12">
+          <span class="menu-label">
+            <span class="menu-radio ${clock === '12' ? 'selected' : ''}"></span>
+            ${t('clock12h')}
+          </span>
+        </button>
+        <button class="menu-item" data-action="set-clock" data-value="24">
+          <span class="menu-label">
+            <span class="menu-radio ${clock === '24' ? 'selected' : ''}"></span>
+            ${t('clock24h')}
+          </span>
+        </button>
+      </div>
+    </div>
+    <div class="menu-has-sub">
+      <button class="menu-item menu-parent">
+        <span class="menu-label">${t('language')}</span>
+        <span class="menu-arrow">&#9656;</span>
+      </button>
+      <div class="menu-submenu">
+        <button class="menu-item" data-action="set-lang" data-value="en">
+          <span class="menu-label">
+            <span class="menu-radio ${lang === 'en' ? 'selected' : ''}"></span>
+            ${t('english')}
+          </span>
+        </button>
+        <button class="menu-item" data-action="set-lang" data-value="zh">
+          <span class="menu-label">
+            <span class="menu-radio ${lang === 'zh' ? 'selected' : ''}"></span>
+            ${t('chinese')}
+          </span>
+        </button>
+      </div>
+    </div>
   `
 }
 
@@ -223,6 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
     `
 
     updateDots()
+    updateGo()
     updatePrompt()
     updateTime()
     updateUI()
@@ -233,6 +333,19 @@ document.addEventListener('DOMContentLoaded', () => {
     menu.id = 'context-menu'
     menu.innerHTML = getMenuHTML()
     document.body.appendChild(menu)
+
+    menu.addEventListener('mouseover', (e) => {
+      const sub = (e.target as HTMLElement).closest('.menu-has-sub') as HTMLElement
+      if (!sub) return
+      const submenu = sub.querySelector('.menu-submenu') as HTMLElement
+      if (!submenu) return
+      submenu.style.left = ''
+      const rect = submenu.getBoundingClientRect()
+      if (rect.right > window.innerWidth) {
+        submenu.style.left = 'auto'
+        submenu.style.right = '100%'
+      }
+    })
 
     document.addEventListener('contextmenu', (e) => {
       e.preventDefault()
@@ -275,12 +388,22 @@ document.addEventListener('DOMContentLoaded', () => {
             updateDots()
             refreshMenu()
             break
+          case 'toggle-go':
+            setStored(STORAGE_KEYS.showGo, getStored(STORAGE_KEYS.showGo, ['true', 'false'], 'true') === 'true' ? 'false' : 'true')
+            updateGo()
+            refreshMenu()
+            break
           case 'set-theme':
             applyTheme(value as Theme)
             refreshMenu()
             break
           case 'set-engine':
             setStored(STORAGE_KEYS.searchEngine, value)
+            refreshMenu()
+            break
+          case 'set-clock':
+            setStored(STORAGE_KEYS.clockFormat, value)
+            updateTime()
             refreshMenu()
             break
           case 'set-lang':

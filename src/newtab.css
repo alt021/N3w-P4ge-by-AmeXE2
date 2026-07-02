@@ -130,7 +130,18 @@ body.show-dots {
   border: 1px solid var(--border);
   border-radius: 4px;
   cursor: pointer;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, opacity 0.3s ease, max-width 0.3s ease, padding 0.3s ease, margin 0.3s ease;
+  overflow: hidden;
+  max-width: 100px;
+}
+
+.search-go.hidden {
+  opacity: 0;
+  max-width: 0;
+  padding: 1rem 0;
+  margin: 0;
+  border: none;
+  pointer-events: none;
 }
 
 .search-go:hover {
@@ -203,12 +214,6 @@ body.show-dots {
   margin: 0.4rem 0;
 }
 
-.menu-group-title {
-  padding: 0.4rem 1rem;
-  font-size: 0.75rem;
-  color: var(--muted);
-}
-
 .menu-radio {
   width: 12px;
   height: 12px;
@@ -229,4 +234,39 @@ body.show-dots {
   height: 6px;
   background: var(--fg);
   border-radius: 50%;
+}
+
+/* Submenu */
+.menu-parent {
+  justify-content: space-between;
+  position: relative;
+}
+
+.menu-arrow {
+  font-size: 0.7rem;
+}
+
+.menu-has-sub {
+  position: relative;
+}
+
+.menu-submenu {
+  position: absolute;
+  left: 100%;
+  top: -0.4rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.5rem 0;
+  min-width: 180px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: none;
+}
+
+.menu-has-sub:hover > .menu-submenu {
+  display: block;
+}
+
+.menu-submenu .menu-item {
+  padding-left: 1rem;
 }
