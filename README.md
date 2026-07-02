@@ -9,7 +9,7 @@ A Chrome MV3 new tab extension with auto dark mode, live clock, custom search en
 
 ## 特别提醒
 
-本项目为Vibe Coding产物，仅供作者自用。如需使用请自行修改项目源码或进行重构
+本项目为Vibe Coding产物，仅供作者自用，代码质量较差。如有需要请自行重构或修改
 
 ## 主要功能
 
