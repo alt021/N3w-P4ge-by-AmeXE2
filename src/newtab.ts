@@ -16,6 +16,7 @@ const STORAGE_KEYS = {
   lang: 'lang',
   clockFormat: 'clockFormat',
   searchStyle: 'searchStyle',
+  showShortcuts: 'showShortcuts',
 }
 
 const SEARCH_URLS: Record<Exclude<SearchEngine, 'browser'>, string> = {
@@ -29,6 +30,7 @@ const I18N: Record<Lang, Record<string, string>> = {
     timeDisplay: 'Time Display',
     showGo: 'Search button',
     dotBackground: 'Dot Background',
+    showShortcuts: 'Shortcuts',
     theme: 'Theme',
     auto: 'Auto',
     light: 'Light',
@@ -49,12 +51,17 @@ const I18N: Record<Lang, Record<string, string>> = {
     square: 'Square',
     rounded: 'Rounded',
     line: 'Line',
+    bookmarks: 'Bookmarks',
+    history: 'History',
+    downloads: 'Downloads',
+    extensions: 'Extensions',
   },
   zh: {
     searchTitle: '显示标题',
     timeDisplay: '时间显示',
     showGo: '搜索按钮',
     dotBackground: '点阵背景',
+    showShortcuts: '快捷方式',
     theme: '主题',
     auto: '自动',
     light: '浅色',
@@ -75,6 +82,10 @@ const I18N: Record<Lang, Record<string, string>> = {
     square: '方形',
     rounded: '圆角矩形',
     line: '横线',
+    bookmarks: '书签',
+    history: '历史',
+    downloads: '下载',
+    extensions: '扩展',
   },
 }
 
@@ -140,11 +151,32 @@ function updateSearchStyle() {
   form.classList.add(`style-${style}`)
 }
 
+function updateShortcuts() {
+  const shortcuts = document.getElementById('shortcuts') as HTMLElement
+  const showShortcuts = getStored(STORAGE_KEYS.showShortcuts, ['true', 'false'], 'true') === 'true'
+  if (shortcuts) shortcuts.classList.toggle('hidden', !showShortcuts)
+  const items = document.querySelectorAll('.shortcut-item[data-i18n]')
+  items.forEach((item) => {
+    const key = item.getAttribute('data-i18n')
+    if (key) item.textContent = t(key)
+  })
+}
+
+function updatePlaceholder() {
+  const input = document.getElementById('search-input') as HTMLInputElement
+  const placeholder = document.querySelector('.search-placeholder') as HTMLElement
+  if (!input || !placeholder) return
+  placeholder.textContent = t('placeholder')
+  placeholder.classList.toggle('hidden', input.value.length > 0)
+}
+
 function updateUI() {
   const input = document.getElementById('search-input') as HTMLInputElement
   const goBtn = document.querySelector('.search-go') as HTMLElement
-  if (input) input.placeholder = t('placeholder')
+  if (input) input.placeholder = ''
   if (goBtn) goBtn.textContent = t('go')
+  updatePlaceholder()
+  updateShortcuts()
 }
 
 const IPV4_RE = /^(?:\d{1,3}\.){3}\d{1,3}$/
@@ -188,6 +220,7 @@ function getMenuHTML(): string {
   const showTime = getStored(STORAGE_KEYS.showTime, ['true', 'false'], 'false') === 'true'
   const showDots = getStored(STORAGE_KEYS.showDots, ['true', 'false'], 'true') === 'true'
   const showGo = getStored(STORAGE_KEYS.showGo, ['true', 'false'], 'true') === 'true'
+  const showShortcuts = getStored(STORAGE_KEYS.showShortcuts, ['true', 'false'], 'true') === 'true'
   const theme = getStored(STORAGE_KEYS.theme, ['auto', 'light', 'dark'], 'auto')
   const engine = getStored(STORAGE_KEYS.searchEngine, ['browser', 'google', 'duckduckgo'], 'browser')
   const lang = getStored(STORAGE_KEYS.lang, ['en', 'zh'], 'en')
@@ -217,6 +250,12 @@ function getMenuHTML(): string {
       <span class="menu-label">
         <span class="menu-check ${showGo ? 'checked' : ''}">${showGo ? '&#10003;' : ''}</span>
         ${t('showGo')}
+      </span>
+    </button>
+    <button class="menu-item" data-action="toggle-shortcuts">
+      <span class="menu-label">
+        <span class="menu-check ${showShortcuts ? 'checked' : ''}">${showShortcuts ? '&#10003;' : ''}</span>
+        ${t('showShortcuts')}
       </span>
     </button>
     <div class="menu-separator"></div>
@@ -359,10 +398,17 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="time" id="time"></div>
         <form class="search-form" id="search-form">
           <div class="search-box">
-            <input type="text" class="search-input" id="search-input" placeholder="Type to search..." autofocus>
+            <input type="text" class="search-input" id="search-input" autofocus>
+            <span class="search-placeholder">Type to search...</span>
             <button type="submit" class="search-go" title="Go">Go</button>
           </div>
         </form>
+      </div>
+      <div class="shortcuts" id="shortcuts">
+        <a class="shortcut-item" data-url="chrome://bookmarks" data-i18n="bookmarks"></a>
+        <a class="shortcut-item" data-url="chrome://history" data-i18n="history"></a>
+        <a class="shortcut-item" data-url="chrome://downloads" data-i18n="downloads"></a>
+        <a class="shortcut-item" data-url="chrome://extensions" data-i18n="extensions"></a>
       </div>
     `
 
@@ -372,6 +418,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updatePrompt()
     updateTime()
     updateUI()
+    updateShortcuts()
     setInterval(updateTime, 1000)
 
     const menu = document.createElement('div')
@@ -386,11 +433,20 @@ document.addEventListener('DOMContentLoaded', () => {
       const submenu = sub.querySelector('.menu-submenu') as HTMLElement
       if (!submenu) return
       submenu.style.left = ''
-      const rect = submenu.getBoundingClientRect()
-      if (rect.right > window.innerWidth) {
-        submenu.style.left = 'auto'
-        submenu.style.right = '100%'
-      }
+      submenu.style.right = ''
+      submenu.style.top = ''
+      submenu.style.bottom = ''
+      requestAnimationFrame(() => {
+        const rect = submenu.getBoundingClientRect()
+        if (rect.right > window.innerWidth) {
+          submenu.style.left = 'auto'
+          submenu.style.right = '100%'
+        }
+        if (rect.bottom > window.innerHeight) {
+          submenu.style.top = 'auto'
+          submenu.style.bottom = '0'
+        }
+      })
     })
 
     document.addEventListener('contextmenu', (e) => {
@@ -439,6 +495,11 @@ document.addEventListener('DOMContentLoaded', () => {
             updateGo()
             refreshMenu()
             break
+          case 'toggle-shortcuts':
+            setStored(STORAGE_KEYS.showShortcuts, getStored(STORAGE_KEYS.showShortcuts, ['true', 'false'], 'true') === 'true' ? 'false' : 'true')
+            updateShortcuts()
+            refreshMenu()
+            break
           case 'set-theme':
             applyTheme(value as Theme)
             refreshMenu()
@@ -468,11 +529,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const form = document.getElementById('search-form') as HTMLFormElement
     const input = document.getElementById('search-input') as HTMLInputElement
+    const placeholder = document.querySelector('.search-placeholder') as HTMLElement
+
+    input.addEventListener('focus', () => {
+      placeholder.classList.add('hidden')
+    })
+
+    input.addEventListener('blur', () => {
+      updatePlaceholder()
+    })
+
+    input.addEventListener('input', () => {
+      updatePlaceholder()
+    })
 
     form.addEventListener('submit', (e) => {
       e.preventDefault()
       const query = input.value.trim()
       if (query) search(query)
+    })
+
+    document.querySelectorAll('.shortcut-item[data-url]').forEach((item) => {
+      item.addEventListener('click', (e) => {
+        e.preventDefault()
+        const url = (item as HTMLElement).getAttribute('data-url')
+        if (url && typeof chrome !== 'undefined' && chrome.tabs) {
+          chrome.tabs.create({ url })
+        }
+      })
     })
   }
 })

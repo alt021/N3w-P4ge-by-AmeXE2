@@ -122,11 +122,40 @@ body.show-dots {
   background: var(--bg);
   color: var(--fg);
   outline: none;
-  transition: border-color 0.2s, padding-right 0.15s;
+  text-align: left;
+  transition: border-color 0.2s, padding-right 0.15s, text-align 0.2s ease;
 }
 
-.search-input::placeholder {
+.search-input:has(~ .search-go.hidden) {
+  text-align: center;
+}
+
+.search-placeholder {
+  position: absolute;
+  left: 1.25rem;
+  top: 50%;
+  transform: translateY(-50%);
   color: var(--placeholder);
+  font-size: 1.1rem;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.search-placeholder.hidden {
+  display: none;
+}
+
+.search-input:focus ~ .search-placeholder {
+  display: none;
+}
+
+.search-input:has(~ .search-go.hidden) ~ .search-placeholder {
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.search-input:has(~ .search-go.hidden) ~ .search-placeholder.hidden {
+  transform: translate(-50%, -50%);
 }
 
 .search-go {
@@ -314,4 +343,31 @@ body.show-dots {
 
 .menu-submenu .menu-item {
   padding-left: 1rem;
+}
+
+/* Shortcuts */
+.shortcuts {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 2rem;
+  z-index: 100;
+}
+
+.shortcuts.hidden {
+  display: none;
+}
+
+.shortcut-item {
+  font-size: 0.9rem;
+  color: var(--muted);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.shortcut-item:hover {
+  color: var(--fg);
 }
