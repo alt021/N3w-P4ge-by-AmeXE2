@@ -17,6 +17,7 @@ const STORAGE_KEYS = {
   clockFormat: 'clockFormat',
   searchStyle: 'searchStyle',
   showShortcuts: 'showShortcuts',
+  showClickFx: 'showClickFx',
 }
 
 const SEARCH_URLS: Record<Exclude<SearchEngine, 'browser'>, string> = {
@@ -31,6 +32,7 @@ const I18N: Record<Lang, Record<string, string>> = {
     showGo: 'Search button',
     dotBackground: 'Dot Background',
     showShortcuts: 'Shortcuts',
+    clickEffects: 'Click Effects',
     theme: 'Theme',
     auto: 'Auto',
     light: 'Light',
@@ -66,6 +68,7 @@ const I18N: Record<Lang, Record<string, string>> = {
     showGo: '搜索按钮',
     dotBackground: '点阵背景',
     showShortcuts: '快捷方式',
+    clickEffects: '点击特效',
     theme: '主题',
     auto: '自动',
     light: '浅色',
@@ -143,6 +146,51 @@ function updateTime() {
 function updateDots() {
   const showDots = getStored(STORAGE_KEYS.showDots, ['true', 'false'], 'true') === 'true'
   document.body.classList.toggle('show-dots', showDots)
+}
+
+let clickFxActive = false
+
+function updateClickFx() {
+  const show = getStored(STORAGE_KEYS.showClickFx, ['true', 'false'], 'true') === 'true'
+  if (show && !clickFxActive) {
+    document.addEventListener('mousedown', onMouseDown)
+    clickFxActive = true
+  } else if (!show && clickFxActive) {
+    document.removeEventListener('mousedown', onMouseDown)
+    clickFxActive = false
+  }
+}
+
+function onMouseDown(e: MouseEvent) {
+  const colors = ['var(--fg)', 'var(--muted)', 'var(--border)']
+  for (let i = 0; i < 18; i++) {
+    const angle = (Math.PI * 2 * i) / 18 + (Math.random() - 0.5) * 0.5
+    const speed = 80 + Math.random() * 200
+    const vx = Math.cos(angle) * speed
+    const vy = Math.sin(angle) * speed
+    const size = 2 + Math.random() * 5
+    const life = 400 + Math.random() * 400
+
+    const el = document.createElement('div')
+    el.className = 'px px-burst'
+    el.style.left = e.clientX + 'px'
+    el.style.top = e.clientY + 'px'
+    el.style.width = size + 'px'
+    el.style.height = size + 'px'
+    el.style.background = colors[Math.floor(Math.random() * colors.length)]
+    el.style.setProperty('--life', life + 'ms')
+    document.body.appendChild(el)
+
+    const start = performance.now()
+    ;(function anim(now: number) {
+      const t = Math.min((now - start) / life, 1)
+      const ease = 1 - t * t
+      el.style.left = (e.clientX + vx * t * ease) + 'px'
+      el.style.top = (e.clientY + vy * t * ease + 60 * t * t) + 'px'
+      if (t < 1) requestAnimationFrame(anim)
+      else el.remove()
+    })(start)
+  }
 }
 
 function updateGo() {
@@ -458,6 +506,7 @@ function getMenuHTML(): string {
   const showDots = getStored(STORAGE_KEYS.showDots, ['true', 'false'], 'true') === 'true'
   const showGo = getStored(STORAGE_KEYS.showGo, ['true', 'false'], 'true') === 'true'
   const showShortcuts = getStored(STORAGE_KEYS.showShortcuts, ['true', 'false'], 'true') === 'true'
+  const showClickFx = getStored(STORAGE_KEYS.showClickFx, ['true', 'false'], 'true') === 'true'
   const theme = getStored(STORAGE_KEYS.theme, ['auto', 'light', 'dark'], 'auto')
   const engine = getStored(STORAGE_KEYS.searchEngine, ['browser', 'google', 'duckduckgo'], 'browser')
   const lang = getStored(STORAGE_KEYS.lang, ['en', 'zh'], 'en')
@@ -493,6 +542,12 @@ function getMenuHTML(): string {
       <span class="menu-label">
         <span class="menu-check ${showShortcuts ? 'checked' : ''}">${showShortcuts ? '&#10003;' : ''}</span>
         ${t('showShortcuts')}
+      </span>
+    </button>
+    <button class="menu-item" data-action="toggle-clickfx">
+      <span class="menu-label">
+        <span class="menu-check ${showClickFx ? 'checked' : ''}">${showClickFx ? '&#10003;' : ''}</span>
+        ${t('clickEffects')}
       </span>
     </button>
     <div class="menu-separator"></div>
@@ -656,6 +711,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateTime()
     updateUI()
     updateShortcuts()
+    updateClickFx()
     setInterval(updateTime, 1000)
 
     const menu = document.createElement('div')
@@ -759,6 +815,11 @@ document.addEventListener('DOMContentLoaded', () => {
           case 'toggle-shortcuts':
             setStored(STORAGE_KEYS.showShortcuts, getStored(STORAGE_KEYS.showShortcuts, ['true', 'false'], 'true') === 'true' ? 'false' : 'true')
             updateShortcuts()
+            refreshMenu()
+            break
+          case 'toggle-clickfx':
+            setStored(STORAGE_KEYS.showClickFx, getStored(STORAGE_KEYS.showClickFx, ['true', 'false'], 'true') === 'true' ? 'false' : 'true')
+            updateClickFx()
             refreshMenu()
             break
           case 'set-theme':

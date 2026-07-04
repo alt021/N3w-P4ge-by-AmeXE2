@@ -640,3 +640,21 @@ body.show-dots {
 .sidebar-footer-link:hover {
   color: var(--fg);
 }
+
+/* Click Effects */
+.px {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.px-burst {
+  opacity: 0.7;
+  animation: burst-fade var(--life) ease-out forwards;
+}
+
+@keyframes burst-fade {
+  0% { opacity: 0.75; transform: scale(1); }
+  60% { opacity: 0.4; }
+  100% { opacity: 0; transform: scale(0.2); }
+}
