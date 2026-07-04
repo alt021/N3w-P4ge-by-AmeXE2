@@ -52,7 +52,11 @@ const I18N: Record<Lang, Record<string, string>> = {
     rounded: 'Rounded',
     line: 'Line',
     bookmarks: 'Bookmarks',
+    bookmarksBar: 'Bookmarks Bar',
+    otherBookmarks: 'Other Bookmarks',
+    folder: 'Folder',
     history: 'History',
+    more: 'More',
     downloads: 'Downloads',
     extensions: 'Extensions',
   },
@@ -83,7 +87,11 @@ const I18N: Record<Lang, Record<string, string>> = {
     rounded: '圆角矩形',
     line: '横线',
     bookmarks: '书签',
+    bookmarksBar: '收藏夹栏',
+    otherBookmarks: '其他收藏夹',
+    folder: '文件夹',
     history: '历史',
+    more: '更多',
     downloads: '下载',
     extensions: '扩展',
   },
@@ -162,6 +170,235 @@ function updateShortcuts() {
   })
 }
 
+function escapeHTML(str: string): string {
+  const div = document.createElement('div')
+  div.textContent = str
+  return div.innerHTML
+}
+
+function hideSidebar() {
+  const overlay = document.getElementById('sidebar-overlay')
+  const panel = document.getElementById('sidebar-panel')
+  if (overlay) overlay.classList.remove('visible')
+  if (panel) panel.classList.remove('visible')
+}
+
+function showSidebar(type: 'bookmarks' | 'history') {
+  const overlay = document.getElementById('sidebar-overlay')
+  const panel = document.getElementById('sidebar-panel')
+  const title = panel?.querySelector('.sidebar-header h3')
+  const content = panel?.querySelector('.sidebar-content') as HTMLElement
+  const footerLink = panel?.querySelector('.sidebar-footer-link') as HTMLButtonElement
+  const moreBtn = document.getElementById('sidebar-more')
+
+  if (!overlay || !panel || !content) return
+
+  if (title) title.textContent = type === 'bookmarks' ? t('bookmarks') : t('history')
+  content.innerHTML = ''
+
+  const chromeUrl = type === 'bookmarks' ? 'chrome://bookmarks' : 'chrome://history'
+
+  if (moreBtn) {
+    moreBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M6.25 4.5A1.75 1.75 0 0 0 4.5 6.25v11.5c0 .966.783 1.75 1.75 1.75h11.5a1.75 1.75 0 0 0 1.75-1.75v-4a.75.75 0 0 1 1.5 0v4A3.25 3.25 0 0 1 17.75 21H6.25A3.25 3.25 0 0 1 3 17.75V6.25A3.25 3.25 0 0 1 6.25 3h4a.75.75 0 0 1 0 1.5h-4ZM13 3.75a.75.75 0 0 1 .75-.75h6.5a.75.75 0 0 1 .75.75v6.5a.75.75 0 0 1-1.5 0V5.56l-5.22 5.22a.75.75 0 0 1-1.06-1.06l5.22-5.22h-4.69a.75.75 0 0 1-.75-.75Z"/></svg>'
+    moreBtn.title = t('more')
+    moreBtn.onclick = () => {
+      if (typeof chrome !== 'undefined' && chrome.tabs) {
+        chrome.tabs.create({ url: chromeUrl })
+      }
+    }
+  }
+
+  if (footerLink) {
+    footerLink.onclick = () => {
+      if (typeof chrome !== 'undefined' && chrome.tabs) {
+        chrome.tabs.create({ url: chromeUrl })
+      }
+    }
+  }
+
+  if (type === 'bookmarks') {
+    loadBookmarksSidebar(content)
+  } else {
+    loadHistory(content)
+  }
+
+  overlay.classList.add('visible')
+  panel.classList.add('visible')
+}
+
+function loadBookmarksSidebar(container: HTMLElement) {
+  container.innerHTML = ''
+
+  const tabBar = document.createElement('div')
+  tabBar.className = 'sidebar-tabs'
+
+  const indicator = document.createElement('div')
+  indicator.className = 'sidebar-tab-indicator'
+  tabBar.appendChild(indicator)
+
+  const content = document.createElement('div')
+  content.className = 'sidebar-bookmark-content'
+
+  const tabs = [
+    { id: '1', label: t('bookmarksBar') },
+    { id: '2', label: t('otherBookmarks') },
+  ]
+
+  const tabBtns: HTMLButtonElement[] = []
+  let currentFolderId = '1'
+
+  function moveIndicator(activeBtn: HTMLButtonElement) {
+    const tabRect = tabBar.getBoundingClientRect()
+    const btnRect = activeBtn.getBoundingClientRect()
+    indicator.style.left = (btnRect.left - tabRect.left) + 'px'
+    indicator.style.width = btnRect.width + 'px'
+  }
+
+  function switchTab(folderId: string, btn: HTMLButtonElement) {
+    if (folderId === currentFolderId) return
+    currentFolderId = folderId
+    tabBtns.forEach(b => b.classList.toggle('active', b === btn))
+    moveIndicator(btn)
+
+    content.style.animation = 'none'
+    content.offsetHeight
+    content.style.animation = 'fadeIn 0.2s ease'
+
+    loadBookmarksContent(content, folderId)
+  }
+
+  for (const tab of tabs) {
+    const btn = document.createElement('button')
+    btn.className = 'sidebar-tab' + (tab.id === '1' ? ' active' : '')
+    btn.textContent = tab.label
+    btn.addEventListener('click', () => switchTab(tab.id, btn))
+    tabBar.appendChild(btn)
+    tabBtns.push(btn)
+  }
+
+  container.appendChild(tabBar)
+  container.appendChild(content)
+
+  requestAnimationFrame(() => {
+    const activeBtn = tabBtns.find(b => b.classList.contains('active'))
+    if (activeBtn) moveIndicator(activeBtn)
+  })
+
+  loadBookmarksContent(content, '1')
+}
+
+async function loadBookmarksContent(container: HTMLElement, folderId: string) {
+  container.innerHTML = ''
+
+  if (typeof chrome === 'undefined' || !chrome.bookmarks) {
+    container.innerHTML = '<div class="sidebar-empty">Chrome API not available</div>'
+    return
+  }
+
+  try {
+    const result = await chrome.bookmarks.getSubTree(folderId)
+    const root = result[0]
+    if (!root || !root.children || root.children.length === 0) {
+      const empty = document.createElement('div')
+      empty.className = 'sidebar-empty'
+      empty.textContent = 'EMPTY'
+      container.appendChild(empty)
+      return
+    }
+    renderBookmarkFolder(container, root.children)
+  } catch {
+    const empty = document.createElement('div')
+    empty.className = 'sidebar-empty'
+    empty.textContent = 'EMPTY'
+    container.appendChild(empty)
+  }
+}
+
+function renderBookmarkFolder(container: HTMLElement, nodes: chrome.bookmarks.BookmarkTreeNode[]) {
+  for (const node of nodes) {
+    if (node.children) {
+      const folder = document.createElement('div')
+      folder.className = 'bookmark-folder'
+
+      const header = document.createElement('button')
+      header.className = 'bookmark-folder-header'
+      header.innerHTML = `
+        <span class="bookmark-folder-arrow-cell">
+          <svg class="bookmark-folder-arrow" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 2.5L8 6L4.5 9.5"/></svg>
+        </span>
+        <div class="bookmark-folder-info">
+          <div class="bookmark-folder-name">${escapeHTML(node.title || 'Untitled')}</div>
+          <div class="bookmark-folder-type">${t('folder')}</div>
+        </div>
+      `
+
+      const children = document.createElement('div')
+      children.className = 'bookmark-folder-children'
+
+      header.addEventListener('click', () => {
+        const isOpen = folder.classList.toggle('open')
+        const arrow = header.querySelector('.bookmark-folder-arrow') as SVGElement
+        if (arrow) arrow.style.transform = isOpen ? 'rotate(90deg)' : ''
+      })
+
+      renderBookmarkFolder(children, node.children)
+
+      folder.appendChild(header)
+      folder.appendChild(children)
+      container.appendChild(folder)
+    } else if (node.url) {
+      const btn = document.createElement('button')
+      btn.className = 'sidebar-item'
+      btn.innerHTML = `
+        <div class="sidebar-item-title">${escapeHTML(node.title || node.url)}</div>
+        <div class="sidebar-item-url">${escapeHTML(node.url)}</div>
+      `
+      btn.addEventListener('click', () => {
+        window.location.href = node.url!
+      })
+      container.appendChild(btn)
+    }
+  }
+}
+
+async function loadHistory(container: HTMLElement) {
+  if (typeof chrome === 'undefined' || !chrome.history) {
+    container.innerHTML = '<div class="sidebar-empty">Chrome API not available</div>'
+    return
+  }
+  try {
+    const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+    const results = await chrome.history.search({
+      text: '',
+      startTime: oneWeekAgo,
+      maxResults: 80,
+    })
+    if (!results || results.length === 0) {
+      container.innerHTML = '<div class="sidebar-empty">No history</div>'
+      return
+    }
+    for (const item of results) {
+      if (!item.url) continue
+      const btn = document.createElement('button')
+      btn.className = 'sidebar-item'
+      const timeStr = item.lastVisitTime
+        ? new Date(item.lastVisitTime).toLocaleString()
+        : ''
+      btn.innerHTML = `
+        <div class="sidebar-item-title">${escapeHTML(item.title || item.url)}</div>
+        <div class="sidebar-item-url">${escapeHTML(item.url)}</div>
+        ${timeStr ? `<div class="sidebar-item-time">${escapeHTML(timeStr)}</div>` : ''}
+      `
+      btn.addEventListener('click', () => {
+        window.location.href = item.url!
+      })
+      container.appendChild(btn)
+    }
+  } catch {
+    container.innerHTML = '<div class="sidebar-empty">Failed to load history</div>'
+  }
+}
+
 function updatePlaceholder() {
   const input = document.getElementById('search-input') as HTMLInputElement
   const placeholder = document.querySelector('.search-placeholder') as HTMLElement
@@ -210,8 +447,8 @@ function search(query: string) {
   const engine = getStored(STORAGE_KEYS.searchEngine, ['browser', 'google', 'duckduckgo'], 'browser')
   if (engine === 'browser' && typeof chrome !== 'undefined' && chrome.search) {
     chrome.search.query({ text: query })
-  } else {
-    window.location.href = SEARCH_URLS[engine] + encodeURIComponent(query)
+  } else if (engine in SEARCH_URLS) {
+    window.location.href = SEARCH_URLS[engine as keyof typeof SEARCH_URLS] + encodeURIComponent(query)
   }
 }
 
@@ -427,6 +664,30 @@ document.addEventListener('DOMContentLoaded', () => {
     menu.innerHTML = getMenuHTML()
     document.body.appendChild(menu)
 
+    const sidebarHTML = `
+      <div class="sidebar-overlay" id="sidebar-overlay"></div>
+      <div class="sidebar-panel" id="sidebar-panel">
+        <div class="sidebar-header">
+          <h3></h3>
+          <button class="sidebar-more" id="sidebar-more"></button>
+        </div>
+        <div class="sidebar-content"></div>
+        <div class="sidebar-footer">
+          <button class="sidebar-footer-link"></button>
+        </div>
+      </div>
+    `
+    const sidebarTemp = document.createElement('div')
+    sidebarTemp.innerHTML = sidebarHTML
+    while (sidebarTemp.firstChild) {
+      document.body.appendChild(sidebarTemp.firstChild)
+    }
+
+    document.getElementById('sidebar-overlay')!.addEventListener('click', hideSidebar)
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') hideSidebar()
+    })
+
     menu.addEventListener('mouseover', (e) => {
       const sub = (e.target as HTMLElement).closest('.menu-has-sub') as HTMLElement
       if (!sub) return
@@ -553,7 +814,11 @@ document.addEventListener('DOMContentLoaded', () => {
       item.addEventListener('click', (e) => {
         e.preventDefault()
         const url = (item as HTMLElement).getAttribute('data-url')
-        if (url && typeof chrome !== 'undefined' && chrome.tabs) {
+        if (url === 'chrome://bookmarks') {
+          showSidebar('bookmarks')
+        } else if (url === 'chrome://history') {
+          showSidebar('history')
+        } else if (url && typeof chrome !== 'undefined' && chrome.tabs) {
           chrome.tabs.create({ url })
         }
       })
