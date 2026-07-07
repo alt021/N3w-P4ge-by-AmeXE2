@@ -101,8 +101,7 @@ const I18N: Record<Lang, Record<string, string>> = {
 }
 
 function t(key: string): string {
-  const lang = getStored(STORAGE_KEYS.lang, ['en', 'zh'], 'en')
-  return I18N[lang][key] || key
+  return I18N[getLang()][key] || key
 }
 
 function getStored<T extends string>(key: string, valid: T[], fallback: T): T {
@@ -112,6 +111,19 @@ function getStored<T extends string>(key: string, valid: T[], fallback: T): T {
 
 function setStored(key: string, value: string) {
   localStorage.setItem(key, value)
+}
+
+function detectBrowserLang(): Lang {
+  const nav = navigator.language || (navigator as { userLanguage?: string }).userLanguage || ''
+  return nav.toLowerCase().startsWith('zh') ? 'zh' : 'en'
+}
+
+function getLang(): Lang {
+  const stored = localStorage.getItem(STORAGE_KEYS.lang)
+  if (stored === 'en' || stored === 'zh') return stored
+  const detected = detectBrowserLang()
+  setStored(STORAGE_KEYS.lang, detected)
+  return detected
 }
 
 function applyTheme(theme: Theme) {
@@ -249,41 +261,86 @@ SOFTWARE.`
 
 let onboardingStep = 0
 
-const ONBOARDING_PAGES = [
-  `<div class="onboarding-center">
-     <div class="onboarding-emoji">👋</div>
-     <div class="onboarding-title">欢迎使用AmeXE2的新标签页</div>
-     <div class="onboarding-subtitle">一个现代 · 极简 · 纯净的浏览器主页</div>
-   </div>`,
-  `<div class="onboarding-col">
-     <div class="onboarding-title">开源说明与使用许可</div>
-     <div class="onboarding-subtitle">请仔细阅读相关说明</div>
-     <div class="onboarding-scroll">
-       <h3>扩展说明</h3>
-       <ol>
-         <li>本项目为Vibe Coding产物，仅供作者自用。代码质量较差，如有需要请自行重构或修改。</li>
-         <li>本扩展完全离线运行，不收集、上传或存储任何有关于您的数据或信息。</li>
-         <li>为实现快捷方式功能，本扩展需要您的历史记录和书签的访问权限，数据仅在本地存储，不会被上传或收集。</li>
-       </ol>
-       <h3>开源说明</h3>
-       <pre style="white-space:pre-wrap;font-family:inherit;margin:0.5rem 0">${escapeHTML(MIT_LICENSE)}</pre>
-     </div>
-   </div>`,
-  `<div class="onboarding-col">
-     <div class="onboarding-title">使用方法</div>
-     <div class="onboarding-subtitle">点按右键打开设置菜单</div>
-     <img class="onboarding-img" src="scrshot.png" alt="右键菜单截图">
-   </div>`,
-  `<div class="onboarding-center">
-     <div class="onboarding-emoji">🎉</div>
-     <div class="onboarding-title">欢迎使用</div>
-   </div>`,
-]
-
-const ONBOARDING_BTNS = ['开始', '同意', '继续', '完成']
+const ONBOARDING_I18N: Record<Lang, {
+  pages: string[]
+  btns: string[]
+  hint: string
+}> = {
+  zh: {
+    pages: [
+      `<div class="onboarding-center">
+         <div class="onboarding-emoji">👋</div>
+         <div class="onboarding-title">欢迎使用AmeXE2的新标签页</div>
+         <div class="onboarding-subtitle">一个现代 · 极简 · 纯净的浏览器主页</div>
+       </div>`,
+      `<div class="onboarding-col">
+         <div class="onboarding-title">开源说明与使用许可</div>
+         <div class="onboarding-subtitle">请仔细阅读相关说明</div>
+         <div class="onboarding-scroll">
+           <h3>扩展说明</h3>
+           <ol>
+             <li>本项目为Vibe Coding产物，仅供作者自用。代码质量较差，如有需要请自行重构或修改。</li>
+             <li>本扩展完全离线运行，不收集、上传或存储任何有关于您的数据或信息。</li>
+             <li>为实现快捷方式功能，本扩展需要您的历史记录和书签的访问权限，数据仅在本地存储，不会被上传或收集。</li>
+           </ol>
+           <h3>开源说明</h3>
+           <pre style="white-space:pre-wrap;font-family:inherit;margin:0.5rem 0">${escapeHTML(MIT_LICENSE)}</pre>
+         </div>
+       </div>`,
+      `<div class="onboarding-col">
+         <div class="onboarding-title">使用方法</div>
+         <div class="onboarding-subtitle">点按右键打开设置菜单</div>
+         <img class="onboarding-img" src="scrshot.png" alt="右键菜单截图">
+       </div>`,
+      `<div class="onboarding-center">
+         <div class="onboarding-emoji">🎉</div>
+         <div class="onboarding-title">欢迎使用</div>
+       </div>`,
+    ],
+    btns: ['开始', '同意', '继续', '完成'],
+    hint: '滚动阅读至底部后可进行下一步',
+  },
+  en: {
+    pages: [
+      `<div class="onboarding-center">
+         <div class="onboarding-emoji">👋</div>
+         <div class="onboarding-title">Welcome to AmeXE2 New Tab</div>
+         <div class="onboarding-subtitle">A modern · minimal · clean browser homepage</div>
+       </div>`,
+      `<div class="onboarding-col">
+         <div class="onboarding-title">Open Source & License</div>
+         <div class="onboarding-subtitle">Please read the following carefully</div>
+         <div class="onboarding-scroll">
+           <h3>About This Extension</h3>
+           <ol>
+             <li>This project is a Vibe Coding product, intended for personal use only. Code quality may be poor — feel free to refactor or modify as needed.</li>
+             <li>This extension runs entirely offline. It does not collect, upload, or store any of your data or information.</li>
+             <li>To enable shortcuts, this extension requires access to your history and bookmarks. Data is stored locally only and is never uploaded or collected.</li>
+           </ol>
+           <h3>Open Source License</h3>
+           <pre style="white-space:pre-wrap;font-family:inherit;margin:0.5rem 0">${escapeHTML(MIT_LICENSE)}</pre>
+         </div>
+       </div>`,
+      `<div class="onboarding-col">
+         <div class="onboarding-title">How to Use</div>
+         <div class="onboarding-subtitle">Right-click to open the settings menu</div>
+         <img class="onboarding-img" src="scrshot.png" alt="Context menu screenshot">
+       </div>`,
+      `<div class="onboarding-center">
+         <div class="onboarding-emoji">🎉</div>
+         <div class="onboarding-title">Enjoy!</div>
+       </div>`,
+    ],
+    btns: ['Start', 'Agree', 'Continue', 'Finish'],
+    hint: 'Scroll to the bottom to proceed',
+  },
+}
 
 function showOnboarding() {
   if (localStorage.getItem('onboardingDone') === 'true') return
+
+  const lang = getLang()
+  const ob = ONBOARDING_I18N[lang]
 
   const overlay = document.createElement('div')
   overlay.className = 'onboarding-overlay'
@@ -296,7 +353,7 @@ function showOnboarding() {
   slider.className = 'onboarding-slider'
 
   const panels: HTMLElement[] = []
-  ONBOARDING_PAGES.forEach((html, i) => {
+  ob.pages.forEach((html, i) => {
     const panel = document.createElement('div')
     panel.className = 'onboarding-panel'
     panel.innerHTML = html
@@ -310,14 +367,14 @@ function showOnboarding() {
 
   const hint = document.createElement('div')
   hint.className = 'onboarding-hint hidden'
-  hint.textContent = '滚动阅读至底部后可进行下一步'
+  hint.textContent = ob.hint
 
   const btn = document.createElement('button')
   btn.className = 'onboarding-btn'
-  btn.textContent = ONBOARDING_BTNS[0]
+  btn.textContent = ob.btns[0]
 
   function updateStepUI() {
-    btn.textContent = ONBOARDING_BTNS[onboardingStep]
+    btn.textContent = ob.btns[onboardingStep]
     if (onboardingStep === 1) {
       const scroll = panels[1].querySelector('.onboarding-scroll') as HTMLElement
       if (scroll) {
@@ -647,7 +704,7 @@ function getMenuHTML(): string {
   const showClickFx = getStored(STORAGE_KEYS.showClickFx, ['true', 'false'], 'true') === 'true'
   const theme = getStored(STORAGE_KEYS.theme, ['auto', 'light', 'dark'], 'auto')
   const engine = getStored(STORAGE_KEYS.searchEngine, ['browser', 'google', 'duckduckgo'], 'browser')
-  const lang = getStored(STORAGE_KEYS.lang, ['en', 'zh'], 'en')
+  const lang = getLang()
   const clock = getStored(STORAGE_KEYS.clockFormat, ['12', '24'], '24')
   const searchStyle = getStored(STORAGE_KEYS.searchStyle, ['square', 'rounded', 'line'], 'square')
 
