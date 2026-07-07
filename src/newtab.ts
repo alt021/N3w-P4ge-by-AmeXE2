@@ -224,6 +224,144 @@ function escapeHTML(str: string): string {
   return div.innerHTML
 }
 
+/* Onboarding */
+const MIT_LICENSE = `MIT License
+
+Copyright (c) 2025 AmeXE2
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.`
+
+let onboardingStep = 0
+
+const ONBOARDING_PAGES = [
+  `<div class="onboarding-center">
+     <div class="onboarding-emoji">👋</div>
+     <div class="onboarding-title">欢迎使用AmeXE2的新标签页</div>
+     <div class="onboarding-subtitle">一个现代 · 极简 · 纯净的浏览器主页</div>
+   </div>`,
+  `<div class="onboarding-col">
+     <div class="onboarding-title">开源说明与使用许可</div>
+     <div class="onboarding-subtitle">请仔细阅读相关说明</div>
+     <div class="onboarding-scroll">
+       <h3>扩展说明</h3>
+       <ol>
+         <li>本项目为Vibe Coding产物，仅供作者自用。代码质量较差，如有需要请自行重构或修改。</li>
+         <li>本扩展完全离线运行，不收集、上传或存储任何有关于您的数据或信息。</li>
+         <li>为实现快捷方式功能，本扩展需要您的历史记录和书签的访问权限，数据仅在本地存储，不会被上传或收集。</li>
+       </ol>
+       <h3>开源说明</h3>
+       <pre style="white-space:pre-wrap;font-family:inherit;margin:0.5rem 0">${escapeHTML(MIT_LICENSE)}</pre>
+     </div>
+   </div>`,
+  `<div class="onboarding-col">
+     <div class="onboarding-title">使用方法</div>
+     <div class="onboarding-subtitle">点按右键打开设置菜单</div>
+     <img class="onboarding-img" src="scrshot.png" alt="右键菜单截图">
+   </div>`,
+  `<div class="onboarding-center">
+     <div class="onboarding-emoji">🎉</div>
+     <div class="onboarding-title">欢迎使用</div>
+   </div>`,
+]
+
+const ONBOARDING_BTNS = ['开始', '同意', '继续', '完成']
+
+function showOnboarding() {
+  if (localStorage.getItem('onboardingDone') === 'true') return
+
+  const overlay = document.createElement('div')
+  overlay.className = 'onboarding-overlay'
+  overlay.id = 'onboarding-overlay'
+
+  const dialog = document.createElement('div')
+  dialog.className = 'onboarding-dialog'
+
+  const slider = document.createElement('div')
+  slider.className = 'onboarding-slider'
+
+  const panels: HTMLElement[] = []
+  ONBOARDING_PAGES.forEach((html, i) => {
+    const panel = document.createElement('div')
+    panel.className = 'onboarding-panel'
+    panel.innerHTML = html
+    panel.style.transform = `translateX(${i * 100}%)`
+    slider.appendChild(panel)
+    panels.push(panel)
+  })
+
+  const footer = document.createElement('div')
+  footer.className = 'onboarding-footer'
+
+  const hint = document.createElement('div')
+  hint.className = 'onboarding-hint hidden'
+  hint.textContent = '滚动阅读至底部后可进行下一步'
+
+  const btn = document.createElement('button')
+  btn.className = 'onboarding-btn'
+  btn.textContent = ONBOARDING_BTNS[0]
+
+  function updateStepUI() {
+    btn.textContent = ONBOARDING_BTNS[onboardingStep]
+    if (onboardingStep === 1) {
+      const scroll = panels[1].querySelector('.onboarding-scroll') as HTMLElement
+      if (scroll) {
+        const atBottom = scroll.scrollTop + scroll.clientHeight >= scroll.scrollHeight - 4
+        btn.disabled = !atBottom
+        hint.classList.toggle('hidden', atBottom)
+        const onScroll = () => {
+          const reached = scroll.scrollTop + scroll.clientHeight >= scroll.scrollHeight - 4
+          btn.disabled = !reached
+          hint.classList.toggle('hidden', reached)
+        }
+        scroll.removeEventListener('scroll', onScroll)
+        scroll.addEventListener('scroll', onScroll)
+      }
+    } else {
+      btn.disabled = false
+      hint.classList.add('hidden')
+    }
+  }
+
+  btn.addEventListener('click', () => {
+    onboardingStep++
+    if (onboardingStep > 3) {
+      localStorage.setItem('onboardingDone', 'true')
+      overlay.classList.remove('visible')
+      setTimeout(() => overlay.remove(), 300)
+      return
+    }
+    panels.forEach((p, i) => {
+      p.style.transform = `translateX(${(i - onboardingStep) * 100}%)`
+    })
+    updateStepUI()
+  })
+
+  footer.appendChild(hint)
+  footer.appendChild(btn)
+  dialog.appendChild(slider)
+  dialog.appendChild(footer)
+  overlay.appendChild(dialog)
+  document.body.appendChild(overlay)
+
+  requestAnimationFrame(() => overlay.classList.add('visible'))
+}
+
 function hideSidebar() {
   const overlay = document.getElementById('sidebar-overlay')
   const panel = document.getElementById('sidebar-panel')
@@ -713,6 +851,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateShortcuts()
     updateClickFx()
     setInterval(updateTime, 1000)
+    showOnboarding()
 
     const menu = document.createElement('div')
     menu.className = 'context-menu'
