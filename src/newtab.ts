@@ -768,14 +768,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.addEventListener('contextmenu', (e) => {
       e.preventDefault()
+      menu.classList.add('visible')
       const menuRect = menu.getBoundingClientRect()
-      const menuW = menuRect.width || 200
-      const menuH = menuRect.height || 300
+      const menuW = menuRect.width
+      const menuH = menuRect.height
       const x = Math.min(e.clientX, window.innerWidth - menuW - 8)
       const y = Math.min(e.clientY, window.innerHeight - menuH - 8)
       menu.style.left = `${Math.max(0, x)}px`
       menu.style.top = `${Math.max(0, y)}px`
-      menu.classList.add('visible')
       menuVisible = true
     })
 
