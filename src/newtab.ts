@@ -373,18 +373,27 @@ function showOnboarding() {
   btn.className = 'onboarding-btn'
   btn.textContent = ob.btns[0]
 
+  let scrollReached = false
+
   function updateStepUI() {
     btn.textContent = ob.btns[onboardingStep]
     if (onboardingStep === 1) {
+      if (scrollReached) {
+        btn.disabled = false
+        hint.classList.add('hidden')
+        return
+      }
+      btn.disabled = true
+      hint.classList.remove('hidden')
       const scroll = panels[1].querySelector('.onboarding-scroll') as HTMLElement
       if (scroll) {
-        const atBottom = scroll.scrollTop + scroll.clientHeight >= scroll.scrollHeight - 4
-        btn.disabled = !atBottom
-        hint.classList.toggle('hidden', atBottom)
         const onScroll = () => {
-          const reached = scroll.scrollTop + scroll.clientHeight >= scroll.scrollHeight - 4
-          btn.disabled = !reached
-          hint.classList.toggle('hidden', reached)
+          if (scroll.scrollTop + scroll.clientHeight >= scroll.scrollHeight - 4) {
+            scrollReached = true
+            btn.disabled = false
+            hint.classList.add('hidden')
+            scroll.removeEventListener('scroll', onScroll)
+          }
         }
         scroll.removeEventListener('scroll', onScroll)
         scroll.addEventListener('scroll', onScroll)
@@ -875,6 +884,7 @@ function refreshMenu() {
 let menuVisible = false
 
 document.addEventListener('DOMContentLoaded', () => {
+  document.title = getLang() === 'zh' ? '新标签页' : 'New tab'
   applyTheme(getStored(STORAGE_KEYS.theme, ['auto', 'light', 'dark'], 'auto'))
 
   const app = document.getElementById('app')
@@ -1038,6 +1048,7 @@ document.addEventListener('DOMContentLoaded', () => {
             break
           case 'set-lang':
             setStored(STORAGE_KEYS.lang, value)
+            document.title = value === 'zh' ? '新标签页' : 'New tab'
             updateUI()
             refreshMenu()
             break
