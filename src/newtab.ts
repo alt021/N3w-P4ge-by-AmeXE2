@@ -1,10 +1,11 @@
 import './newtab.css'
 
 type Theme = 'auto' | 'light' | 'dark'
-type SearchEngine = 'browser' | 'google' | 'duckduckgo'
+type SearchEngine = 'browser' | 'google' | 'duckduckgo' | 'qwant' | 'bing' | 'baidu'
 type Lang = 'en' | 'zh'
 type ClockFormat = '12' | '24'
 type SearchStyle = 'square' | 'rounded' | 'line'
+type BackgroundStyle = 'blank' | 'dots' | 'stripes'
 
 const STORAGE_KEYS = {
   theme: 'theme',
@@ -13,6 +14,7 @@ const STORAGE_KEYS = {
   showGo: 'showGo',
   searchEngine: 'searchEngine',
   showDots: 'showDots',
+  backgroundStyle: 'backgroundStyle',
   lang: 'lang',
   clockFormat: 'clockFormat',
   searchStyle: 'searchStyle',
@@ -23,14 +25,22 @@ const STORAGE_KEYS = {
 const SEARCH_URLS: Record<Exclude<SearchEngine, 'browser'>, string> = {
   google: 'https://www.google.com/search?q=',
   duckduckgo: 'https://duckduckgo.com/?q=',
+  qwant: 'https://www.qwant.com/?q=',
+  bing: 'https://www4.bing.com/search?q=',
+  baidu: 'https://www.baidu.com/s?wd=',
 }
+
+const SEARCH_ENGINES: SearchEngine[] = ['browser', 'google', 'duckduckgo', 'qwant', 'bing', 'baidu']
 
 const I18N: Record<Lang, Record<string, string>> = {
   en: {
     searchTitle: 'Search title',
     timeDisplay: 'Time Display',
     showGo: 'Search button',
-    dotBackground: 'Dot Background',
+    background: 'Background',
+    blankBackground: 'Blank',
+    dotBackground: 'Dot Grid',
+    stripeBackground: 'Stripes',
     showShortcuts: 'Shortcuts',
     clickEffects: 'Click Effects',
     theme: 'Theme',
@@ -41,6 +51,9 @@ const I18N: Record<Lang, Record<string, string>> = {
     browserDefault: 'Browser Default',
     google: 'Google',
     duckduckgo: 'DuckDuckGo',
+    qwant: 'Qwant',
+    bing: 'Bing',
+    baidu: 'Baidu',
     language: 'Language',
     english: 'English',
     chinese: '中文',
@@ -66,7 +79,10 @@ const I18N: Record<Lang, Record<string, string>> = {
     searchTitle: '显示标题',
     timeDisplay: '时间显示',
     showGo: '搜索按钮',
-    dotBackground: '点阵背景',
+    background: '背景',
+    blankBackground: '空白',
+    dotBackground: '点阵',
+    stripeBackground: '条纹',
     showShortcuts: '快捷方式',
     clickEffects: '点击特效',
     theme: '主题',
@@ -77,6 +93,9 @@ const I18N: Record<Lang, Record<string, string>> = {
     browserDefault: '跟随浏览器',
     google: 'Google',
     duckduckgo: 'DuckDuckGo',
+    qwant: 'Qwant',
+    bing: 'Bing',
+    baidu: '百度',
     language: '语言',
     english: 'English',
     chinese: '中文',
@@ -156,8 +175,14 @@ function updateTime() {
 }
 
 function updateDots() {
-  const showDots = getStored(STORAGE_KEYS.showDots, ['true', 'false'], 'true') === 'true'
-  document.body.classList.toggle('show-dots', showDots)
+  const stored = localStorage.getItem(STORAGE_KEYS.backgroundStyle)
+  const fallback = getStored(STORAGE_KEYS.showDots, ['true', 'false'], 'true') === 'true' ? 'dots' : 'blank'
+  const backgroundStyle = stored === 'blank' || stored === 'dots' || stored === 'stripes'
+    ? stored
+    : fallback
+
+  document.body.classList.remove('bg-blank', 'bg-dots', 'bg-stripes')
+  document.body.classList.add(`bg-${backgroundStyle}`)
 }
 
 let clickFxActive = false
@@ -696,7 +721,7 @@ function search(query: string) {
     openURL(query)
     return
   }
-  const engine = getStored(STORAGE_KEYS.searchEngine, ['browser', 'google', 'duckduckgo'], 'browser')
+  const engine = getStored(STORAGE_KEYS.searchEngine, SEARCH_ENGINES, 'browser')
   if (engine === 'browser' && typeof chrome !== 'undefined' && chrome.search) {
     chrome.search.query({ text: query })
   } else if (engine in SEARCH_URLS) {
@@ -707,12 +732,12 @@ function search(query: string) {
 function getMenuHTML(): string {
   const showTitle = getStored(STORAGE_KEYS.showTitle, ['true', 'false'], 'true') === 'true'
   const showTime = getStored(STORAGE_KEYS.showTime, ['true', 'false'], 'false') === 'true'
-  const showDots = getStored(STORAGE_KEYS.showDots, ['true', 'false'], 'true') === 'true'
   const showGo = getStored(STORAGE_KEYS.showGo, ['true', 'false'], 'true') === 'true'
   const showShortcuts = getStored(STORAGE_KEYS.showShortcuts, ['true', 'false'], 'true') === 'true'
   const showClickFx = getStored(STORAGE_KEYS.showClickFx, ['true', 'false'], 'true') === 'true'
+  const backgroundStyle = getStored(STORAGE_KEYS.backgroundStyle, ['blank', 'dots', 'stripes'], getStored(STORAGE_KEYS.showDots, ['true', 'false'], 'true') === 'true' ? 'dots' : 'blank')
   const theme = getStored(STORAGE_KEYS.theme, ['auto', 'light', 'dark'], 'auto')
-  const engine = getStored(STORAGE_KEYS.searchEngine, ['browser', 'google', 'duckduckgo'], 'browser')
+  const engine = getStored(STORAGE_KEYS.searchEngine, SEARCH_ENGINES, 'browser')
   const lang = getLang()
   const clock = getStored(STORAGE_KEYS.clockFormat, ['12', '24'], '24')
   const searchStyle = getStored(STORAGE_KEYS.searchStyle, ['square', 'rounded', 'line'], 'square')
@@ -728,12 +753,6 @@ function getMenuHTML(): string {
       <span class="menu-label">
         <span class="menu-check ${showTime ? 'checked' : ''}">${showTime ? '&#10003;' : ''}</span>
         ${t('timeDisplay')}
-      </span>
-    </button>
-    <button class="menu-item" data-action="toggle-dots">
-      <span class="menu-label">
-        <span class="menu-check ${showDots ? 'checked' : ''}">${showDots ? '&#10003;' : ''}</span>
-        ${t('dotBackground')}
       </span>
     </button>
     <button class="menu-item" data-action="toggle-go">
@@ -755,6 +774,32 @@ function getMenuHTML(): string {
       </span>
     </button>
     <div class="menu-separator"></div>
+    <div class="menu-has-sub">
+      <button class="menu-item menu-parent">
+        <span class="menu-label">${t('background')}</span>
+        <span class="menu-arrow">&#9656;</span>
+      </button>
+      <div class="menu-submenu">
+        <button class="menu-item" data-action="set-background" data-value="blank">
+          <span class="menu-label">
+            <span class="menu-radio ${backgroundStyle === 'blank' ? 'selected' : ''}"></span>
+            ${t('blankBackground')}
+          </span>
+        </button>
+        <button class="menu-item" data-action="set-background" data-value="dots">
+          <span class="menu-label">
+            <span class="menu-radio ${backgroundStyle === 'dots' ? 'selected' : ''}"></span>
+            ${t('dotBackground')}
+          </span>
+        </button>
+        <button class="menu-item" data-action="set-background" data-value="stripes">
+          <span class="menu-label">
+            <span class="menu-radio ${backgroundStyle === 'stripes' ? 'selected' : ''}"></span>
+            ${t('stripeBackground')}
+          </span>
+        </button>
+      </div>
+    </div>
     <div class="menu-has-sub">
       <button class="menu-item menu-parent">
         <span class="menu-label">${t('theme')}</span>
@@ -803,6 +848,24 @@ function getMenuHTML(): string {
           <span class="menu-label">
             <span class="menu-radio ${engine === 'duckduckgo' ? 'selected' : ''}"></span>
             ${t('duckduckgo')}
+          </span>
+        </button>
+        <button class="menu-item" data-action="set-engine" data-value="qwant">
+          <span class="menu-label">
+            <span class="menu-radio ${engine === 'qwant' ? 'selected' : ''}"></span>
+            ${t('qwant')}
+          </span>
+        </button>
+        <button class="menu-item" data-action="set-engine" data-value="bing">
+          <span class="menu-label">
+            <span class="menu-radio ${engine === 'bing' ? 'selected' : ''}"></span>
+            ${t('bing')}
+          </span>
+        </button>
+        <button class="menu-item" data-action="set-engine" data-value="baidu">
+          <span class="menu-label">
+            <span class="menu-radio ${engine === 'baidu' ? 'selected' : ''}"></span>
+            ${t('baidu')}
           </span>
         </button>
       </div>
@@ -1008,8 +1071,8 @@ document.addEventListener('DOMContentLoaded', () => {
             updateTime()
             refreshMenu()
             break
-          case 'toggle-dots':
-            setStored(STORAGE_KEYS.showDots, getStored(STORAGE_KEYS.showDots, ['true', 'false'], 'true') === 'true' ? 'false' : 'true')
+          case 'set-background':
+            setStored(STORAGE_KEYS.backgroundStyle, value)
             updateDots()
             refreshMenu()
             break

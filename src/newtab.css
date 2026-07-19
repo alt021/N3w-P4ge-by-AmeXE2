@@ -56,9 +56,17 @@ body {
   user-select: none;
 }
 
-body.show-dots {
+body.bg-blank {
+  background-image: none;
+}
+
+body.bg-dots {
   background-image: radial-gradient(circle, var(--dot) 1.5px, transparent 1.5px);
   background-size: 32px 32px;
+}
+
+body.bg-stripes {
+  background-image: repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.02) 0 72px, transparent 72px 168px);
 }
 
 .main {
