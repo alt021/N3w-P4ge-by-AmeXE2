@@ -1,5 +1,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
 
+@font-face {
+  font-family: 'Latin Mono';
+  src: local('SF Mono'), local('Fira Code'), local('Cascadia Code'),
+    local('Consolas'), local('DejaVu Sans Mono'), local('Liberation Mono');
+  unicode-range: U+0000-00FF;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -42,10 +49,9 @@
 }
 
 body {
-  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas',
-    'DejaVu Sans Mono', 'Liberation Mono', 'Roboto', 'PingFang SC',
-    'Microsoft YaHei', 'WenQuanYi Micro Hei', 'Noto Sans SC', monospace,
-    sans-serif;
+  font-family: 'Latin Mono', 'Sarasa UI SC', 'Sarasa UI TC', 'Sarasa UI J',
+    'Sarasa UI K', 'Roboto', 'PingFang SC',
+    'Microsoft YaHei', 'WenQuanYi Micro Hei', 'Noto Sans SC', sans-serif;
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -77,10 +83,9 @@ body.bg-stripes {
 }
 
 .prompt {
-  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas',
-    'DejaVu Sans Mono', 'Liberation Mono', 'Roboto', 'PingFang SC',
-    'Microsoft YaHei', 'WenQuanYi Micro Hei', 'Noto Sans SC', monospace,
-    sans-serif;
+  font-family: 'Latin Mono', 'Sarasa UI SC', 'Sarasa UI TC', 'Sarasa UI J',
+    'Sarasa UI K', 'Roboto', 'PingFang SC',
+    'Microsoft YaHei', 'WenQuanYi Micro Hei', 'Noto Sans SC', sans-serif;
   font-size: 1rem;
   color: var(--muted);
   margin-bottom: 1rem;
@@ -97,10 +102,9 @@ body.bg-stripes {
 }
 
 .time {
-  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas',
-    'DejaVu Sans Mono', 'Liberation Mono', 'Roboto', 'PingFang SC',
-    'Microsoft YaHei', 'WenQuanYi Micro Hei', 'Noto Sans SC', monospace,
-    sans-serif;
+  font-family: 'Latin Mono', 'Sarasa UI SC', 'Sarasa UI TC', 'Sarasa UI J',
+    'Sarasa UI K', 'Roboto', 'PingFang SC',
+    'Microsoft YaHei', 'WenQuanYi Micro Hei', 'Noto Sans SC', sans-serif;
   font-size: 2.5rem;
   color: var(--fg);
   margin-bottom: 1.5rem;

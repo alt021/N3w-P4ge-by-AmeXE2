@@ -1,6 +1,9 @@
 import { defineConfig } from 'vite'
 import { resolve } from 'path'
 import { copyFileSync, mkdirSync, existsSync, cpSync } from 'fs'
+import { fileURLToPath } from 'url'
+
+const configDir = fileURLToPath(new URL('.', import.meta.url))
 
 export default defineConfig({
   build: {
@@ -8,7 +11,7 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        newtab: resolve(__dirname, 'newtab.html'),
+        newtab: resolve(configDir, 'newtab.html'),
       },
     },
   },
@@ -16,17 +19,17 @@ export default defineConfig({
     {
       name: 'copy-manifest',
       closeBundle() {
-        const distDir = resolve(__dirname, 'dist')
+        const distDir = resolve(configDir, 'dist')
         if (!existsSync(distDir)) mkdirSync(distDir, { recursive: true })
-        copyFileSync(resolve(__dirname, 'manifest.json'), resolve(distDir, 'manifest.json'))
+        copyFileSync(resolve(configDir, 'manifest.json'), resolve(distDir, 'manifest.json'))
         // Copy icon.png to dist root
-        const iconSrc = resolve(__dirname, 'icon.png')
+        const iconSrc = resolve(configDir, 'icon.png')
         if (existsSync(iconSrc)) copyFileSync(iconSrc, resolve(distDir, 'icon.png'))
         // Copy scrshot.png for onboarding
-        const scrshotSrc = resolve(__dirname, 'scrshot.png')
+        const scrshotSrc = resolve(configDir, 'scrshot.png')
         if (existsSync(scrshotSrc)) copyFileSync(scrshotSrc, resolve(distDir, 'scrshot.png'))
         // Copy _locales directory
-        const localesSrc = resolve(__dirname, '_locales')
+        const localesSrc = resolve(configDir, '_locales')
         if (existsSync(localesSrc)) cpSync(localesSrc, resolve(distDir, '_locales'), { recursive: true })
       },
     },
