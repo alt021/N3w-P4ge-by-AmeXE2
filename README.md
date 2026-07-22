@@ -4,9 +4,6 @@
 
 一个 Chrome MV3 新标签页扩展，支持自动深色模式、实时时钟、自定义搜索引擎与中英文切换。
 
-A Chrome MV3 new tab extension with auto dark mode, live clock, custom search engines, and language toggle.
-
-
 ## 特别提醒
 
 本项目为Vibe Coding产物，仅供作者自用，代码质量较差。如有需要请自行重构或修改
@@ -15,19 +12,28 @@ A Chrome MV3 new tab extension with auto dark mode, live clock, custom search en
 
 - 自动/浅色/深色主题切换
 - 实时时钟显示
-- 自定义搜索引擎（浏览器默认/Google/DuckDuckGo）
-- 点阵背景开关
+- 自定义搜索引擎
+- 三种预设背景格式
 - 中英文界面切换
-- 右键菜单配置
+- 常用快捷入口
 
-## 构建安装
+## 安装运行
+
+### 最新快照版本
 
 1. 克隆本仓库
-2. 运行 `npm install`
-3. 运行 `npm run build`
-4. 访问 `chrome://extensions/`
-5. 启用 "Developer mode"
-6. 选择`加载已解压的扩展程序`，并选中`\dist`文件夹
+2. 访问`chrome://extensions/`
+3. 启用`开发人员模式`
+4. 选择`加载已解压的扩展程序`，并选中项目根目录
+
+### 稳定发行版本
+
+1. 进入GitHub Release，下载`chrome-ext.zip`
+2. 将该压缩包解压至一个空文件夹
+3. 在扩展程序设置中启用`开发人员模式`
+4. 选中`加载已解压的扩展程序`，并选中该文件夹
+
+源码目录可直接作为 Chrome 扩展加载，无需额外执行构建步骤。
 
 ## 项目许可
 
